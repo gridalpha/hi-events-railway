@@ -47,8 +47,12 @@ COPY entrypoint.sh /railway/entrypoint.sh
 RUN chmod +x /railway/entrypoint.sh
 
 # The image was built with `composer install --optimize-autoloader`, so the
-# console command added above needs the classmap rebuilt.
-RUN composer dump-autoload --working-dir=/app/backend --no-interaction --optimize \
+# console command added above needs the classmap rebuilt. --no-scripts is not
+# optional: composer's post-autoload-dump hook runs `artisan package:discover`,
+# which boots Laravel and dies on "No application encryption key has been
+# specified" — APP_KEY is a runtime variable and does not exist at build time.
+RUN composer dump-autoload --working-dir=/app/backend --no-interaction --optimize --no-scripts \
+ && grep -q 'SeedFirstAccountCommand' /app/backend/vendor/composer/autoload_classmap.php \
  && chown -R www-data:www-data /app/backend/vendor /app/backend/bootstrap/cache
 
 # Syntax-check everything committed here: a typo then fails the build rather
